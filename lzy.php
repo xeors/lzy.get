@@ -1,0 +1,102 @@
+<?
+    function Http($url,$data=null,$header=null,$rh=0,$nb=0){
+        $ch=curl_init();
+        curl_setopt($ch,CURLOPT_URL,$url);
+        curl_setopt($ch,CURLOPT_HEADER,$rh);
+        curl_setopt($ch,CURLOPT_NOBODY,$nb);
+        curl_setopt($ch,CURLOPT_RETURNTRANSFER,1);
+        $header==null?:curl_setopt($ch,CURLOPT_HTTPHEADER,$header);
+        $data==null?:(curl_setopt($ch,CURLOPT_POST,1)&&curl_setopt($ch,CURLOPT_POSTFIELDS,$data));
+        $rdata=curl_exec($ch);
+        curl_close($ch);
+        return $rdata;
+    }
+    $u='https://lanzous.com';
+    $q='';
+    $p='';
+    $url4='';
+    if((isset($_GET['d'])&&$_GET['d']!='')||(isset($_GET['s'])&&$_GET['s']!='')){
+        if(isset($_GET['d'])){
+            $q=$_GET['d'];
+        }
+        if(isset($_GET['p'])&&$_GET['p']!=''){
+            $p=$_GET['p'];
+        }
+        if(isset($_GET['s'])){
+            $S=$_GET['s'];
+            if(preg_match('/http.*?\/\//',$S)){
+                if(stripos($S,'密码')!=0){
+                    $t=explode('密码:',$S);
+                    $Url=trim($t[0]);
+                    $Url=preg_replace('/http.*?\/\//','',$Url);
+                    $Ue=explode('/',$Url);
+                    $u=$Ue[0];
+                    $q=$Ue[1];
+                    $p=trim($t[1]);
+                }else{
+                    $Url=trim($S);
+                    $Url=preg_replace('/http.*?\/\//','',$Url);
+                    $Ue=explode('/',$Url);
+                    $u=$Ue[0];
+                    $q=$Ue[1];
+                }                
+            }
+        }
+        $url1=$u.'/'.$q;
+        $r1=Http($url1);
+        if(preg_match('/data.:.\'(.*?)\'/',$r1,$m1)){
+            if($p!=''){
+                $data2=$m1[1].$p;
+                $header2=array(
+                    'Referer:'.$url1
+                );
+                $url2=$u.'/ajaxm.php';
+                $r2=json_decode(Http($url2,$data2,$header2),1);
+                if($r2['zt']!=0){
+                    $url4=$r2['dom'].'/file/'.$r2['url'];
+                }else{
+                    echo '密码错误';
+                    exit;
+                }                
+            }else{
+                echo '缺少密码';
+                exit;                
+            }
+        }else if(preg_match_all('/<iframe.class="ifr2".*?src="(.*?)"/',$r1,$m1)){
+            for($i=0;$i<count($m1[0]);$i++){
+                if(mb_strlen($m1[1][$i])>30){
+                    $url2=$u.$m1[1][$i];
+                    $r2=Http($url2);
+                    preg_match_all('/.data.:.*?sign\':(.*?),/',$r2,$m2);
+                    for($j=0;$j<count($m2[0]);$j++){
+                        if(substr($m2[0][$j],0,1)!='/'){
+                            if(mb_strlen($m2[1][$j])>33){
+                                $sign=$m2[1][$j];
+                            }else if(mb_strlen($m2[1][$j])<20){
+                                preg_match('/'.$m2[1][$j].'.=.(.*?);/',$r2,$m21);
+                                $sign=$m21[1];
+                            }
+                            $url3=$u.'/ajaxm.php';
+                            $header3=array(
+                                'Referer:'.$url2
+                            );
+                            $data3='action=downprocess&ves=1&sign='.str_ireplace('\'','',$sign);
+                            $r3=json_decode(Http($url3,$data3,$header3),1);
+                            $url4=$r3['dom'].'/file/'.$r3['url'];
+                        }
+                    }
+                }
+            }                
+        }
+        if($url4!=''){
+            $header4=array(
+                'accept-language: zh-CN,zh;q=0.9'
+            );
+            $r4=Http($url4,null,$header4,1,1);
+            preg_match('/Location:(.*?)\\r\\n/s',$r4,$m4);
+            echo $m4[1];
+            exit;
+        }
+        echo '来晚啦...文件取消分享了';
+    }
+?>
