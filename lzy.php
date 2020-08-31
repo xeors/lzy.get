@@ -94,7 +94,11 @@
             );
             $r4=Http($url4,null,$header4,1,1);
             preg_match('/Location:(.*?)\\r\\n/s',$r4,$m4);
-            echo $m4[1];
+            if(isset($_GET['r'])){
+                header('Location:'.$m4[1]);
+            }else{
+                echo $m4[1];
+            }
             exit;
         }
         echo '来晚啦...文件取消分享了';
